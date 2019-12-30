@@ -9,6 +9,8 @@ class Items extends Secure_Controller
 		parent::__construct('items');
 
 		$this->load->library('item_lib');
+		$this->load->library('events');
+		$this->load->event('integrations');
 	}
 
 	public function index()
@@ -131,14 +133,12 @@ class Items extends Secure_Controller
 		echo json_encode($suggestions);
 	}
 
-
 	public function suggest_low_sell()
 	{
 		$suggestions = $this->xss_clean($this->Item->get_low_sell_suggestions($this->input->post_get('name')));
 
 		echo json_encode($suggestions);
 	}
-
 
 	public function suggest_kits()
 	{
@@ -188,7 +188,7 @@ class Items extends Secure_Controller
 			$data = array();
 		}
 
-		// allow_temp_items is set in the index function of items.php or sales.php
+	// allow_temp_items is set in the index function of items.php or sales.php
 		$data['allow_temp_item'] = $this->session->userdata('allow_temp_items');
 		$data['item_tax_info'] = $this->xss_clean($this->Item_taxes->get_info($item_id));
 		$data['default_tax_1_rate'] = '';
@@ -310,6 +310,7 @@ class Items extends Secure_Controller
 			// else just pick that file
 			$images = glob('./uploads/item_pics/' . $item_info->pic_filename);
 		}
+
 		$data['image_path'] = sizeof($images) > 0 ? base_url($images[0]) : '';
 		$stock_locations = $this->Stock_location->get_undeleted_all()->result_array();
 		foreach($stock_locations as $location)
@@ -348,11 +349,12 @@ class Items extends Secure_Controller
 
 		$data['stock_locations'] = array();
 		$stock_locations = $this->Stock_location->get_undeleted_all()->result_array();
+
 		foreach($stock_locations as $location)
 		{
 			$location = $this->xss_clean($location);
 			$quantity = $this->xss_clean($this->Item_quantity->get_item_quantity($item_id, $location['location_id'])->quantity);
-
+			
 			$data['stock_locations'][$location['location_id']] = $location['location_name'];
 			$data['item_quantities'][$location['location_id']] = $quantity;
 		}
@@ -363,6 +365,7 @@ class Items extends Secure_Controller
 	public function count_details($item_id = -1)
 	{
 		$item_info = $this->Item->get_info($item_id);
+
 		foreach(get_object_vars($item_info) as $property => $value)
 		{
 			$item_info->$property = $this->xss_clean($value);
@@ -371,6 +374,7 @@ class Items extends Secure_Controller
 
 		$data['stock_locations'] = array();
 		$stock_locations = $this->Stock_location->get_undeleted_all()->result_array();
+
 		foreach($stock_locations as $location)
 		{
 			$location = $this->xss_clean($location);
@@ -393,27 +397,27 @@ class Items extends Secure_Controller
 
 		$data['barcode_config'] = $config;
 
-		// check the list of items to see if any item_number field is empty
+	// check the list of items to see if any item_number field is empty
 		foreach($result as &$item)
 		{
 			$item = $this->xss_clean($item);
 
-			// update the barcode field if empty / NULL with the newly generated barcode
+		// update the barcode field if empty / NULL with the newly generated barcode
 			if(empty($item['item_number']) && $this->config->item('barcode_generate_if_empty'))
 			{
-				// get the newly generated barcode
+			// get the newly generated barcode
 				$barcode_instance = Barcode_lib::barcode_instance($item, $config);
 				$item['item_number'] = $barcode_instance->getData();
 
 				$save_item = array('item_number' => $item['item_number']);
 
-				// update the item in the database in order to save the barcode field
+			// update the item in the database in order to save the barcode field
 				$this->Item->save($save_item, $item['item_id']);
 			}
 		}
 		$data['items'] = $result;
 
-		// display barcodes
+	// display barcodes
 		$this->load->view('barcodes/barcode_sheet', $data);
 	}
 
@@ -488,7 +492,7 @@ class Items extends Secure_Controller
 		}
 		$default_pack_name = $this->lang->line('items_default_pack_name');
 
-		//Save item data
+	//Save item data
 		$item_data = array(
 			'name' => $this->input->post('name'),
 			'description' => $this->input->post('description'),
@@ -518,6 +522,7 @@ class Items extends Secure_Controller
 		}
 
 		$x = $this->input->post('tax_category_id');
+
 		if(!isset($x))
 		{
 			$item_data['tax_category_id'] = '';
@@ -568,21 +573,23 @@ class Items extends Secure_Controller
 				$success &= $this->Item_taxes->save($items_taxes_data, $item_id);
 			}
 
-			//Save item quantity
+		//Save item quantity
 			$stock_locations = $this->Stock_location->get_undeleted_all()->result_array();
 			foreach($stock_locations as $location)
 			{
 				$updated_quantity = parse_decimals($this->input->post('quantity_' . $location['location_id']));
+				
 				if($item_data['item_type'] == ITEM_TEMP)
 				{
 					$updated_quantity = 0;
 				}
+				
 				$location_detail = array('item_id' => $item_id,
 					'location_id' => $location['location_id'],
 					'quantity' => $updated_quantity);
 
-
 				$item_quantity = $this->Item_quantity->get_item_quantity($item_id, $location['location_id']);
+
 				if($item_quantity->quantity != $updated_quantity || $new_item)
 				{
 					$success &= $this->Item_quantity->save($location_detail, $item_id, $location['location_id']);
@@ -600,17 +607,19 @@ class Items extends Secure_Controller
 				}
 			}
 
-			// Save item attributes
+		// Save item attributes
 			$attribute_links = $this->input->post('attribute_links') != NULL ? $this->input->post('attribute_links') : array();
 			$attribute_ids = $this->input->post('attribute_ids');
 			$this->Attribute->delete_link($item_id);
 			foreach($attribute_links as $definition_id => $attribute_id)
 			{
 				$definition_type = $this->Attribute->get_info($definition_id)->definition_type;
+
 				if($definition_type != DROPDOWN)
 				{
 					$attribute_id = $this->Attribute->save_value($attribute_id, $definition_id, $item_id, $attribute_ids[$definition_id], $definition_type);
 				}
+				
 				$this->Attribute->save_link($item_id, $definition_id, $attribute_id);
 			}
 
@@ -619,6 +628,21 @@ class Items extends Secure_Controller
 				$message = $this->xss_clean($this->lang->line('items_successful_' . ($new_item ? 'adding' : 'updating')) . ' ' . $item_data['name']);
 
 				echo json_encode(array('success' => TRUE, 'message' => $message, 'id' => $item_id));
+
+			//Event triggers for Third-Party Integrations
+				if($new_item)
+				{
+				    $event_failures = Events::Trigger('event_create', array("type"=> "ITEMS", "data" => $item_data), 'string');
+				}
+				else
+				{
+				    $event_failures = Events::Trigger('event_update', array("type"=> "ITEMS", "data" => $item_data), 'string');
+				}
+
+				if($event_failures)
+				{
+				    log_message("ERROR","Third-Party Integration failed during item save: $event_failures");
+				}
 			}
 			else
 			{
@@ -659,9 +683,9 @@ class Items extends Secure_Controller
 
 	private function _handle_image_upload()
 	{
-		/* Let files be uploaded with their original name */
+	/* Let files be uploaded with their original name */
 
-		// load upload library
+	// load upload library
 		$config = array('upload_path' => './uploads/item_pics/',
 			'allowed_types' => 'gif|jpg|png',
 			'max_size' => '100',
@@ -698,7 +722,7 @@ class Items extends Secure_Controller
 
 		$this->Inventory->insert($inv_data);
 
-		//Update stock quantity
+	//Update stock quantity
 		$item_quantity = $this->Item_quantity->get_item_quantity($item_id, $location_id);
 		$item_quantity_data = array(
 			'item_id' => $item_id,
@@ -727,7 +751,7 @@ class Items extends Secure_Controller
 
 		foreach($_POST as $key => $value)
 		{
-			//This field is nullable, so treat it differently
+		//This field is nullable, so treat it differently
 			if($key == 'supplier_id' && $value != '')
 			{
 				$item_data["$key"] = $value;
@@ -738,7 +762,7 @@ class Items extends Secure_Controller
 			}
 		}
 
-		//Item data could be empty if tax information is being updated
+	//Item data could be empty if tax information is being updated
 		if(empty($item_data) || $this->Item->update_multiple($item_data, $items_to_update))
 		{
 			$items_taxes_data = array();
@@ -746,6 +770,7 @@ class Items extends Secure_Controller
 			$tax_percents = $this->input->post('tax_percents');
 			$tax_updated = FALSE;
 			$count = count($tax_percents);
+
 			for($k = 0; $k < $count; ++$k)
 			{
 				if(!empty($tax_names[$k]) && is_numeric($tax_percents[$k]))
@@ -777,6 +802,14 @@ class Items extends Secure_Controller
 		{
 			$message = $this->lang->line('items_successful_deleted') . ' ' . count($items_to_delete) . ' ' . $this->lang->line('items_one_or_multiple');
 			echo json_encode(array('success' => TRUE, 'message' => $message));
+
+		//Event triggers for Third-Party Integrations
+			$event_failures = Events::Trigger('event_delete', array("type"=> "ITEMS", "data" => $items_to_delete), 'string');
+
+			if($event_failures)
+			{
+				log_message("ERROR","Third-Party Integration failed during item delete: $event_failures");
+			}
 		}
 		else
 		{
@@ -859,12 +892,27 @@ class Items extends Secure_Controller
 						$invalidated = TRUE;
 					}
 
-					//Save to database
+				//Save to database
 					if(!$invalidated && $this->Item->save($item_data))
 					{
 						$this->save_tax_data($line, $item_data);
 						$this->save_inventory_quantities($line, $item_data);
 						$this->save_attribute_data($line, $item_data);
+
+					//Event triggers for Third-Party Integrations
+						if($this->Item->item_number_exists($item_number))
+						{
+						    $event_failures = Events::Trigger('event_update', array("type"=> "ITEMS", "data" => $item_data), 'string');
+						}
+						else
+						{
+						    $event_failures = Events::Trigger('event_create', array("type"=> "ITEMS", "data" => $item_data), 'string');
+						}
+
+						if($event_failures)
+						{
+						    log_message("ERROR","Third-Party Integration failed during CSV Import: $event_failures");
+						}
 					}
 					else //insert or update item failure
 					{
@@ -903,7 +951,7 @@ class Items extends Secure_Controller
 	 */
 	private function data_error_check($line, $item_data)
 	{
-		//Check for empty required fields
+	//Check for empty required fields
 		$check_for_empty = array(
 			$item_data['name'],
 			$item_data['category'],
@@ -917,7 +965,7 @@ class Items extends Secure_Controller
 			return TRUE;	//Return fail on empty required fields
 		}
 
-		//Build array of fields to check for numerics
+	//Build array of fields to check for numerics
 		$check_for_numeric_values = array(
 			$item_data['cost_price'],
 			$item_data['unit_price'],
@@ -927,7 +975,7 @@ class Items extends Secure_Controller
 			$line['Tax 2 Percent']
 		);
 
-		//Add in Stock Location values to check for numeric
+	//Add in Stock Location values to check for numeric
 		$allowed_locations	= $this->Stock_location->get_allowed_locations();
 
 		foreach($allowed_locations as $location_id => $location_name)
@@ -935,7 +983,7 @@ class Items extends Secure_Controller
 			$check_for_numeric_values[] = $line['location_'. $location_name];
 		}
 
-		//Check for non-numeric values which require numeric
+	//Check for non-numeric values which require numeric
 		foreach($check_for_numeric_values as $value)
 		{
 			if(!is_numeric($value) && $value != '')
@@ -945,7 +993,7 @@ class Items extends Secure_Controller
 			}
 		}
 
-		//Check Attribute Data
+	//Check Attribute Data
 		$definition_names = $this->Attribute->get_definition_names();
 
 		foreach($definition_names as $definition_name)
@@ -1024,8 +1072,8 @@ class Items extends Secure_Controller
 	{
 		//Quantities & Inventory Section
 		$employee_id		= $this->Employee->get_logged_in_employee_info()->person_id;
-		$emp_info			= $this->Employee->get_info($employee_id);
-		$comment			= $this->lang->line('items_inventory_CSV_import_quantity');
+		$emp_info		= $this->Employee->get_info($employee_id);
+		$comment		= $this->lang->line('items_inventory_CSV_import_quantity');
 		$allowed_locations	= $this->Stock_location->get_allowed_locations();
 
 		foreach($allowed_locations as $location_id => $location_name)
@@ -1086,7 +1134,6 @@ class Items extends Secure_Controller
 		}
 	}
 
-
 	/**
 	 * Guess whether file extension is not in the table field, if it isn't, then it's an old-format (formerly pic_id) field, so we guess the right filename and update the table
 	 *
@@ -1096,7 +1143,7 @@ class Items extends Secure_Controller
 	{
 		$filename = pathinfo($item->pic_filename, PATHINFO_FILENAME);
 
-		// if the field is empty there's nothing to check
+	// if the field is empty there's nothing to check
 		if(!empty($filename))
 		{
 			$ext = pathinfo($item->pic_filename, PATHINFO_EXTENSION);
