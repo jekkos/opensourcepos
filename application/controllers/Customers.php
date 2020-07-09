@@ -280,7 +280,7 @@ class Customers extends Persons
 				echo json_encode(array('success' => TRUE,
 								'message' => $this->lang->line('customers_successful_adding') . ' ' . $first_name . ' ' . $last_name,
 								'id' => $this->xss_clean($customer_data['person_id'])));
-				$event_failures = Events::Trigger('event_create', array("type"=> "CUSTOMERS", "data" => $customer_data), 'string');
+				Events::Trigger('event_create', array("type"=> "CUSTOMERS", "data" => $customer_data), 'string');
 			}
 		//Existing customer
 			else

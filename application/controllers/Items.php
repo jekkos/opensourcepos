@@ -119,8 +119,8 @@ class Items extends Secure_Controller
 	 */
 	public function suggest_search()
 	{
-		$suggestions = $this->xss_clean($this->Item->get_search_suggestions($this->input->post_get('term'),
-			array('search_custom' => $this->input->post('search_custom'), 'is_deleted' => $this->input->post('is_deleted') != NULL), FALSE));
+		$options		= array('search_custom' => $this->input->post('search_custom'), 'is_deleted' => $this->input->post('is_deleted') !== NULL);
+		$suggestions	= $this->xss_clean($this->Item->get_search_suggestions($this->input->post_get('term'), $options, FALSE));
 
 		echo json_encode($suggestions);
 	}
