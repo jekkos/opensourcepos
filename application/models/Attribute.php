@@ -5,9 +5,9 @@
 
 class Attribute extends CI_Model
 {
-	const SHOW_IN_ITEMS = 1;
-	const SHOW_IN_SALES = 2;
-	const SHOW_IN_RECEIVINGS = 4;
+	const SHOW_IN_ITEMS			= 1;
+	const SHOW_IN_SALES			= 2;
+	const SHOW_IN_RECEIVINGS	= 4;
 
 	public static function get_definition_flags()
 	{
@@ -298,10 +298,10 @@ class Attribute extends CI_Model
 	{
 		$success = FALSE;
 
-	//From TEXT
+		//From TEXT
 		if($from_type === TEXT)
 		{
-		//To DATETIME or DECIMAL
+			//To DATETIME or DECIMAL
 			if(in_array($to_type, [DATE, DECIMAL], TRUE))
 			{
 				$field = ($to_type === DATE ? 'attribute_date' : 'attribute_decimal');
@@ -322,7 +322,7 @@ class Attribute extends CI_Model
 				}
 			}
 
-		//To DROPDOWN or CHECKBOX
+			//To DROPDOWN or CHECKBOX
 			else if($to_type === DROPDOWN)
 			{
 				$success = TRUE;
@@ -344,7 +344,7 @@ class Attribute extends CI_Model
 			}
 		}
 
-	//From DROPDOWN
+		//From DROPDOWN
 		else if($from_type === DROPDOWN)
 		{
 			//To TEXT
@@ -376,6 +376,16 @@ class Attribute extends CI_Model
 					$this->db->trans_complete();
 				}
 			}
+
+			//From DROPDOWN to TEXT
+			$this->db->trans_start();
+
+			$this->db->from('ospos_attribute_links');
+			$this->db->where('definition_id',$definition_id);
+			$this->db->where('item_id', NULL);
+			$success = $this->db->delete();
+
+			$this->db->trans_complete();
 		}
 
 		//From any other type
@@ -405,8 +415,8 @@ class Attribute extends CI_Model
 		return array($zero_attribute_id, $one_attribute_id);
 	}
 
-	/*
-	 Inserts or updates a definition
+	/**
+	 * Inserts or updates a definition
 	 */
 	public function save_definition(&$definition_data, $definition_id = NO_DEFINITION_ID)
 	{
@@ -434,14 +444,14 @@ class Attribute extends CI_Model
 			$this->db->from('attribute_definitions');
 			$this->db->where('definition_id', $definition_id);
 
-			$row = $this->db->get()->row();
-			$from_definition_type = $row->definition_type;
-			$from_definition_name = $row->definition_name;
-			$to_definition_type = $definition_data['definition_type'];
+			$row					= $this->db->get()->row();
+			$from_definition_type	= $row->definition_type;
+			$from_definition_name	= $row->definition_name;
+			$to_definition_type		= $definition_data['definition_type'];
 
 			if($from_definition_type !== $to_definition_type)
 			{
-				if(!$this->convert_definition_type($definition_id,$from_definition_type,$to_definition_type))
+				if(!$this->convert_definition_type($definition_id, $from_definition_type, $to_definition_type))
 				{
 					return FALSE;
 				}
@@ -648,7 +658,7 @@ class Attribute extends CI_Model
 	/**
 	 * Deletes an Attribute definition from the database and associated column in the items_import.csv
 	 *
-	 * @param	unknown	$definition_id	Attribute definition ID to remove.
+	 * @param	int		$definition_id	Attribute definition ID to remove.
 	 * @return 	boolean					TRUE if successful and FALSE if there is a failure
 	 */
 	public function delete_definition($definition_id)

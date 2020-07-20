@@ -242,7 +242,6 @@ class Item extends CI_Model
 
 		$this->db->where('items.deleted', 0);
 
-		// order by name of item
 		$this->db->order_by('items.name', 'asc');
 
 		if($rows > 0)
@@ -294,10 +293,7 @@ class Item extends CI_Model
 	*/
 	public function get_info_by_id_or_number($item_id, $include_deleted = TRUE)
 	{
-		$this->db->from('items');
-
 		$this->db->group_start();
-
 		$this->db->where('items.item_number', $item_id);
 
 		// check if $item_id is a number and not a string starting with 0
@@ -318,7 +314,7 @@ class Item extends CI_Model
 		// due to barcode and item_id clash
 		$this->db->limit(1);
 
-		$query = $this->db->get();
+		$query = $this->db->get('items');
 
 		if($query->num_rows() == 1)
 		{
@@ -393,6 +389,10 @@ class Item extends CI_Model
 				return TRUE;
 			}
 			return FALSE;
+		}
+		else
+		{
+			$item_data['item_id'] = $item_id;
 		}
 
 		$this->db->where('item_id', $item_id);

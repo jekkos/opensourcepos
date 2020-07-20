@@ -10,6 +10,7 @@ class Config extends Secure_Controller
 
 		$this->load->library('barcode_lib');
 		$this->load->library('sale_lib');
+		$this->load->library('clcdesq_integration_lib');
 	}
 
 	/*
@@ -33,7 +34,8 @@ class Config extends Secure_Controller
 			$license[$i]['text'] = 'LICENSE file must be in OSPOS license directory. You are not allowed to use OSPOS application until the distribution copy of LICENSE file is present.';
 		}
 
-		$dir = new DirectoryIterator('license');	// read all the files in the dir license
+		//Read all the files in the dir license
+		$dir = new DirectoryIterator('license');
 
 		foreach($dir as $fileinfo)
 		{
@@ -98,7 +100,7 @@ class Config extends Secure_Controller
 								{
 									$license[$i]['text'] .= $key2 . ': ';
 
-									foreach($val2 as $key3 => $val3)
+									foreach($val2 as $val3)
 									{
 										$license[$i]['text'] .= $val3 . ' ';
 									}
@@ -218,28 +220,69 @@ class Config extends Secure_Controller
 		// load all the themes, already XSS cleaned in the private function
 		$data['themes'] = $this->_themes();
 
-		//Load General related fields
 		$image_allowed_types 		= array('jpg','jpeg','gif','svg','webp','bmp','png','tif','tiff');
 		$data['image_allowed_types']	= array_combine($image_allowed_types,$image_allowed_types);
 
 		$data['selected_image_allowed_types'] 	= explode('|',$this->config->item('image_allowed_types'));
 
 		//Load Integrations Related fields
-		$data['mailchimp']	= array();
+		$data['mailchimp']	= [];
+		$data['clcdesq']	= [];
 
 		if($this->_check_encryption())
 		{
 			$data['mailchimp']['api_key'] = $this->encryption->decrypt($this->config->item('mailchimp_api_key'));
 			$data['mailchimp']['list_id'] = $this->encryption->decrypt($this->config->item('mailchimp_list_id'));
+			$data['clcdesq']['api_key'] = $this->encryption->decrypt($this->config->item('clcdesq_api_key'));
+			$data['clcdesq']['api_url'] = $this->encryption->decrypt($this->config->item('clcdesq_api_url'));
 		}
 		else
 		{
 			$data['mailchimp']['api_key'] = '';
 			$data['mailchimp']['list_id'] = '';
+			$data['clcdesq']['api_key'] = '';
+			$data['clcdesq']['api_url'] = '';
 		}
 
-		// load mailchimp lists associated to the given api key, already XSS cleaned in the private function
-		$data['mailchimp']['lists'] = $this->_mailchimp();
+		$data['mailchimp']['lists'] 						= $this->_mailchimp();
+
+		$data['clcdesq']['enable']				 			= $this->config->item('clcdesq_enable');
+		$data['clcdesq']['available_attributes'] 			= $this->Attribute->get_definition_names(FALSE);
+		$data['clcdesq']['aspectratio_attribute'] 			= $this->config->item('clcdesq_aspectratio');
+		$data['clcdesq']['audiencerating_attribute']		= $this->config->item('clcdesq_audiencerating');
+		$data['clcdesq']['audioformat_attribute'] 			= $this->config->item('clcdesq_audioformat');
+		$data['clcdesq']['audiotracklisting_attribute']		= $this->config->item('clcdesq_audiotracklisting');
+		$data['clcdesq']['authorstext_attribute'] 			= $this->config->item('clcdesq_authorstext');
+		$data['clcdesq']['binding_attribute'] 				= $this->config->item('clcdesq_binding');
+		$data['clcdesq']['bookforeword_attribute'] 			= $this->config->item('clcdesq_bookforeword');
+		$data['clcdesq']['bookindex_attribute'] 			= $this->config->item('clcdesq_bookindex');
+		$data['clcdesq']['booksamplechapter_attribute'] 	= $this->config->item('clcdesq_booksamplechapter');
+		$data['clcdesq']['category_attribute'] 				= $this->config->item('clcdesq_category');
+		$data['clcdesq']['condition_attribute']				= $this->config->item('clcdesq_condition');
+		$data['clcdesq']['depth_attribute'] 				= $this->config->item('clcdesq_depth');
+		$data['clcdesq']['format_attribute'] 				= $this->config->item('clcdesq_format');
+		$data['clcdesq']['height_attribute'] 				= $this->config->item('clcdesq_height');
+		$data['clcdesq']['language_attribute']				= $this->config->item('clcdesq_language');
+		$data['clcdesq']['location_attribute']				= $this->config->item('clcdesq_location');
+		$data['clcdesq']['numberofdiscs_attribute']			= $this->config->item('clcdesq_numberofdiscs');
+		$data['clcdesq']['numberofpages_attribute']			= $this->config->item('clcdesq_numberofpages');
+		$data['clcdesq']['originaltitle_attribute']			= $this->config->item('clcdesq_originaltitle');
+		$data['clcdesq']['pricenote_attribute'] 			= $this->config->item('clcdesq_pricenote');
+		$data['clcdesq']['producer_attribute']				= $this->config->item('clcdesq_producer');
+		$data['clcdesq']['releasedate_attribute'] 			= $this->config->item('clcdesq_releasedate');
+		$data['clcdesq']['runningtime_attribute'] 			= $this->config->item('clcdesq_runningtime');
+		$data['clcdesq']['series_attribute'] 				= $this->config->item('clcdesq_series');
+		$data['clcdesq']['showonwebsite_attribute'] 		= $this->config->item('clcdesq_showonwebsite');
+		$data['clcdesq']['stockonorder_attribute'] 			= $this->config->item('clcdesq_stockonorder');
+		$data['clcdesq']['subtitle_attribute'] 				= $this->config->item('clcdesq_subtitle');
+		$data['clcdesq']['subtitles_attribute'] 			= $this->config->item('clcdesq_subtitles');
+		$data['clcdesq']['teaserdescription_attribute']		= $this->config->item('clcdesq_teaserdescription');
+		$data['clcdesq']['upc_attribute']	 				= $this->config->item('clcdesq_upc');
+		$data['clcdesq']['uniqueid_attribute']	 			= $this->config->item('clcdesq_uniqueid');
+		$data['clcdesq']['videotrailerembedcode_attribute']	= $this->config->item('clcdesq_videotrailerembedcode');
+		$data['clcdesq']['weight_attribute'] 				= $this->config->item('clcdesq_weight');
+		$data['clcdesq']['weightforshipping_attribute']		= $this->config->item('clcdesq_weightforshipping');
+		$data['clcdesq']['width_attribute'] 				= $this->config->item('clcdesq_width');
 
 		$this->load->view("configs/manage", $data);
 	}
@@ -482,7 +525,7 @@ class Config extends Secure_Controller
 	}
 
 	/*
-	 AJAX call from mailchimp config form to fetch the Mailchimp lists when a valid API key is inserted
+	 * AJAX call from integrations config form to fetch the Mailchimp lists when a valid API key is inserted
 	 */
 	public function ajax_check_mailchimp_api_key()
 	{
@@ -497,20 +540,65 @@ class Config extends Secure_Controller
 		));
 	}
 
-	public function save_mailchimp()
+	public function save_integrations()
 	{
-		$api_key = '';
-		$list_id = '';
+		$mailchimp_api_key	= '';
+		$mailchimp_list_id	= '';
+		$clcdesq_api_key	= '';
+		$clcdesq_api_url	= '';
 
 		if($this->_check_encryption())
 		{
-			$api_key = $this->encryption->encrypt($this->input->post('mailchimp_api_key'));
-			$list_id = $this->encryption->encrypt($this->input->post('mailchimp_list_id'));
+			$mailchimp_api_key = $this->encryption->encrypt($this->input->post('mailchimp_api_key'));
+			$mailchimp_list_id = $this->encryption->encrypt($this->input->post('mailchimp_list_id'));
+			$clcdesq_api_key = $this->encryption->encrypt($this->input->post('clcdesq_api_key'));
+			$clcdesq_api_url = $this->encryption->encrypt($this->input->post('clcdesq_api_url'));
 		}
 
+		$clcdesq_enable = $this->input->post('clcdesq_enable') != NULL;
+
 		$batch_save_data = array(
-			'mailchimp_api_key' => $api_key,
-			'mailchimp_list_id' => $list_id
+			'mailchimp_api_key'				=> $mailchimp_api_key,
+			'mailchimp_list_id' 			=> $mailchimp_list_id,
+			'clcdesq_api_key' 				=> $clcdesq_api_key,
+			'clcdesq_api_url' 				=> $clcdesq_api_url,
+			'clcdesq_enable'				=> $clcdesq_enable,
+
+			'clcdesq_aspectratio'			=> $this->input->post('clcdesq_aspectratio_id'),
+			'clcdesq_audioformat' 			=> $this->input->post('clcdesq_audioformat_id'),
+			'clcdesq_audiotracklisting'		=> $this->input->post('clcdesq_audiotracklisting_id'),
+			'clcdesq_audiencerating'		=> $this->input->post('clcdesq_audiencerating_id'),
+			'clcdesq_authorstext'			=> $this->input->post('clcdesq_authorstext_id'),
+			'clcdesq_binding'				=> $this->input->post('clcdesq_binding_id'),
+			'clcdesq_bookforeword'			=> $this->input->post('clcdesq_bookforeword_id'),
+			'clcdesq_bookindex'				=> $this->input->post('clcdesq_bookindex_id'),
+			'clcdesq_booksamplechapter'		=> $this->input->post('clcdesq_booksamplechapter_id'),
+			'clcdesq_category'				=> $this->input->post('clcdesq_category_id'),
+			'clcdesq_condition'				=> $this->input->post('clcdesq_condition_id'),
+			'clcdesq_depth'					=> $this->input->post('clcdesq_depth_id'),
+			'clcdesq_format' 				=> $this->input->post('clcdesq_format_id'),
+			'clcdesq_upc'					=> $this->input->post('clcdesq_upc_id'),
+			'clcdesq_uniqueid'				=> $this->input->post('clcdesq_uniqueid_id'),
+			'clcdesq_height'				=> $this->input->post('clcdesq_height_id'),
+			'clcdesq_language'				=> $this->input->post('clcdesq_language_id'),
+			'clcdesq_location'				=> $this->input->post('clcdesq_location_id'),
+			'clcdesq_numberofdiscs'			=> $this->input->post('clcdesq_numberofdiscs_id'),
+			'clcdesq_numberofpages'			=> $this->input->post('clcdesq_numberofpages_id'),
+			'clcdesq_originaltitle'			=> $this->input->post('clcdesq_originaltitle_id'),
+			'clcdesq_pricenote' 			=> $this->input->post('clcdesq_pricenote_id'),
+			'clcdesq_producer'				=> $this->input->post('clcdesq_producer_id'),
+			'clcdesq_releasedate' 			=> $this->input->post('clcdesq_releasedate_id'),
+			'clcdesq_runningtime' 			=> $this->input->post('clcdesq_runningtime_id'),
+			'clcdesq_series'	 			=> $this->input->post('clcdesq_series_id'),
+			'clcdesq_showonwebsite'			=> $this->input->post('clcdesq_showonwebsite_id'),
+			'clcdesq_stockonorder'			=> $this->input->post('clcdesq_stockonorder_id'),
+			'clcdesq_subtitle' 				=> $this->input->post('clcdesq_subtitle_id'),
+			'clcdesq_subtitles' 			=> $this->input->post('clcdesq_subtitles_id'),
+			'clcdesq_teaserdescription'		=> $this->input->post('clcdesq_teaserdescription_id'),
+			'clcdesq_videotrailerembedcode'	=> $this->input->post('clcdesq_videotrailerembedcode_id'),
+			'clcdesq_weight'				=> $this->input->post('clcdesq_weight_id'),
+			'clcdesq_weightforshipping'		=> $this->input->post('clcdesq_weightforshipping_id'),
+			'clcdesq_width'					=> $this->input->post('clcdesq_width_id')
 		);
 
 		$result = $this->Appconfig->batch_save($batch_save_data);
@@ -594,7 +682,7 @@ class Config extends Secure_Controller
 		// all locations not available in post will be deleted now
 		$deleted_locations = $this->Stock_location->get_all()->result_array();
 
-		foreach($deleted_locations as $location => $location_data)
+		foreach($deleted_locations as $location_data)
 		{
 			if(!in_array($location_data['location_id'], $not_to_delete))
 			{
@@ -642,7 +730,7 @@ class Config extends Secure_Controller
 			// all tables not available in post will be deleted now
 			$deleted_tables = $this->Dinner_table->get_all()->result_array();
 
-			foreach($deleted_tables as $dinner_tables => $table)
+			foreach($deleted_tables as $table)
 			{
 				if(!in_array($table['dinner_table_id'], $not_to_delete))
 				{
@@ -732,7 +820,7 @@ class Config extends Secure_Controller
 			// all packages not available in post will be deleted now
 			$deleted_packages = $this->Customer_rewards->get_all()->result_array();
 
-			foreach($deleted_packages as $customer_rewards => $reward_category)
+			foreach($deleted_packages as $reward_category)
 			{
 				if(!in_array($reward_category['package_id'], $not_to_delete))
 				{
@@ -943,18 +1031,26 @@ class Config extends Secure_Controller
 
 			$file_name = 'ospos-' . date("Y-m-d-H-i-s") .'.zip';
 			$save = 'uploads/' . $file_name;
+
 			$this->load->helper('download');
+
 			while(ob_get_level())
 			{
 				ob_end_clean();
 			}
 
-			force_download($file_name, $backup);
+			force_download($save, $backup);
 		}
 		else
 		{
 			redirect('no_access/config');
 		}
 	}
+
+	public function initial_items_upload()
+	{
+		$this->clcdesq_integration_lib->items_upload();
+	}
+
 }
 ?>

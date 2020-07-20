@@ -11,6 +11,8 @@ class Receivings extends Secure_Controller
 		$this->load->library('receiving_lib');
 		$this->load->library('token_lib');
 		$this->load->library('barcode_lib');
+		$this->load->library('events');
+		$this->load->event('integrations');
 	}
 
 	public function index()
@@ -252,6 +254,8 @@ class Receivings extends Secure_Controller
 		else
 		{
 			$data['barcode'] = $this->barcode_lib->generate_receipt_barcode($data['receiving_id']);				
+			
+			Events::Trigger('event_update', array("type"=> "RECEIVINGS", "data" => $data), 'string');
 		}
 
 		$data['print_after_sale'] = $this->receiving_lib->is_print_after_sale();

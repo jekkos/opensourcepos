@@ -13,9 +13,11 @@ class Sales extends Secure_Controller
 		parent::__construct('sales');
 
 		$this->load->library('sale_lib');
+		$this->load->library('barcode_lib');
 		$this->load->library('email_lib');
 		$this->load->library('token_lib');
-		$this->load->library('barcode_lib');
+		$this->load->library('events');
+		$this->load->event('integrations');
 	}
 
 	public function index()
@@ -761,6 +763,8 @@ class Sales extends Secure_Controller
 				$data['barcode'] = $this->barcode_lib->generate_receipt_barcode($data['sale_id']);
 				$this->load->view('sales/receipt', $data);
 				$this->sale_lib->clear_all();
+
+				Events::Trigger('event_update', array("type"=> "SALES", "data" => $data), 'string');
 			}
 		}
 	}

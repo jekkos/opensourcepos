@@ -11,7 +11,9 @@ class Customers extends Persons
 		parent::__construct('customers');
 
 		$this->load->library('mailchimp_lib');
-
+		$this->load->library('events');
+		$this->load->event('integrations');
+		
 		$CI =& get_instance();
 
 		$this->_list_id = $CI->encryption->decrypt($CI->Appconfig->get('mailchimp_list_id'));
@@ -269,24 +271,28 @@ class Customers extends Persons
 
 		if($this->Customer->save_customer($person_data, $customer_data, $customer_id))
 		{
-			// save customer to Mailchimp selected list
+		//Save customer to Mailchimp selected list
 			$this->mailchimp_lib->addOrUpdateMember($this->_list_id, $email, $first_name, $last_name, $this->input->post('mailchimp_status'), array('vip' => $this->input->post('mailchimp_vip') != NULL));
 
-			// New customer
+		// New customer
 			if($customer_id == -1)
 			{
 				echo json_encode(array('success' => TRUE,
 								'message' => $this->lang->line('customers_successful_adding') . ' ' . $first_name . ' ' . $last_name,
 								'id' => $this->xss_clean($customer_data['person_id'])));
+				Events::Trigger('event_create', array("type"=> "CUSTOMERS", "data" => $customer_data), 'string');
 			}
-			else // Existing customer
+		//Existing customer
+			else
 			{
 				echo json_encode(array('success' => TRUE,
 								'message' => $this->lang->line('customers_successful_updating') . ' ' . $first_name . ' ' . $last_name,
 								'id' => $customer_id));
+				Events::Trigger('event_update', array("type"=> "CUSTOMERS", "data" => $customer_data), 'string');
 			}
 		}
-		else // Failure
+	//Failure
+		else
 		{
 			echo json_encode(array('success' => FALSE,
 							'message' => $this->lang->line('customers_error_adding_updating') . ' ' . $first_name . ' ' . $last_name,
@@ -328,9 +334,11 @@ class Customers extends Persons
 		{
 			if($this->Customer->delete($info->person_id))
 			{
-				// remove customer from Mailchimp selected list
+			//Remove customer from Mailchimp selected list
 				$this->mailchimp_lib->removeMember($this->_list_id, $info->email);
 
+			//Event triggers for Third-Party Integrations
+				Events::Trigger('event_delete', array("type"=> "CUSTOMERS", "data" => $customers_to_delete), 'string');
 				$count++;
 			}
 		}
