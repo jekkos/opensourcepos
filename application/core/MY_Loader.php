@@ -6,7 +6,8 @@ class MY_Loader extends CI_Loader {
 
     protected $_ci_events_paths = array();
 
-    public function __construct() {
+    public function __construct()
+    {
         parent::__construct();
 
         $this->_ci_events_paths = array(APPPATH);
@@ -61,7 +62,8 @@ class MY_Loader extends CI_Loader {
      * @param	string	an optional object name
      * @return	void
      */
-    protected function _ci_events_class($class, $params = NULL, $object_name = NULL) {
+	protected function _ci_events_class($class, $params = NULL, $object_name = NULL)
+	{
         // Get the class name, and while we're at it trim any slashes.
         // The directory path can be included as part of the class name,
         // but we don't want a leading slash

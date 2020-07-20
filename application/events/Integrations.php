@@ -115,9 +115,11 @@ class Integrations
 				break;
 
 			case 'RECEIVINGS':
+				$results = $this->CI->clcdesq_integration_lib->update_product_push($data['data']);
 				break;
 
 			case 'SALES':
+				$results = $this->CI->clcdesq_integration_lib->update_product_push($data['data']);
 				break;
 
 			case 'GIFTCARDS':

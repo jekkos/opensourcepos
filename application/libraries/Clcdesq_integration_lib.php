@@ -33,6 +33,8 @@ class Clcdesq_integration_lib
 		$push_data		= $this->populate_api_data($data);
 		$api_responses	= $this->send_data($this->api_url, $this->api_key, $push_data);
 
+		$push_data = NULL;
+
 		$this->process_api_responses($api_responses);
 
 		return NULL;
@@ -51,9 +53,10 @@ class Clcdesq_integration_lib
 			return NULL;
 		}
 
-		$push_data	= $this->populate_api_data($data);
+		$push_data		= $this->populate_api_data($data);
+		$api_responses	= $this->send_data($this->api_url, $this->api_key, $push_data);
 
-		$api_responses = $this->send_data($this->api_url, $this->api_key, $push_data);
+		$push_data = NULL;
 
 		$this->process_api_responses($api_responses);
 
@@ -88,6 +91,8 @@ class Clcdesq_integration_lib
 
 		$api_responses = $this->send_data($this->api_url, $this->api_key, $push_data);
 
+		$push_data = NULL;
+
 		$this->process_api_responses($api_responses);
 
 		return NULL;	//No errors
@@ -113,6 +118,8 @@ class Clcdesq_integration_lib
 
 		$push_data		= $this->populate_api_data($all_items);
 		$api_responses	= $this->send_data($this->api_url, $this->api_key, $push_data);
+
+		$push_data = NULL;
 
 		$this->process_api_responses($api_responses);
 	}
@@ -167,6 +174,9 @@ class Clcdesq_integration_lib
 			curl_close($curl_resource);
 		}
 
+		$json	= NULL;
+		$chunks = NULL;
+
 		return $result;
 	}
 
@@ -178,88 +188,116 @@ class Clcdesq_integration_lib
 	 */
 	private function populate_api_data($data)
 	{
-		$config_data	= [];
-		$api_data		= [];
+		$config_data		= [];
+		$api_data			= [];
+		$stock_locations	= $this->CI->Stock_location->get_all()->result_array();
 
 		foreach($this->CI->Appconfig->get_all()->result() as $app_config)
 		{
 			$config_data[$app_config->key] = $app_config->value;
 		}
 
-		foreach($data as $product)
+		foreach($data as $key => $product)
 		{
 			$item_id					= $product['item_id'];
 			$attribute_values			= $this->CI->Attribute->get_attribute_values($item_id);
-			$stock_locations			= $this->CI->Stock_location->get_all()->result_array();
 			$number_of_discs			= $attribute_values[$config_data['clcdesq_numberofdiscs']]['attribute_decimal'];
 			$number_of_pages			= $attribute_values[$config_data['clcdesq_numberofpages']]['attribute_decimal'];
 			$running_time				= $attribute_values[$config_data['clcdesq_runningtime']]['attribute_decimal'];
 			$stock_on_order				= $attribute_values[$config_data['clcdesq_stockonorder']]['attribute_decimal'];
+			$unique_id					= $attribute_values[$config_data['clcdesq_uniqueid']]['attribute_value'];
+			$dimension_unit				= $attribute_values[$config_data['clcdesq_depth']]['attribute_decimal'];
+			$weight_unit				= $attribute_values[$config_data['clcdesq_weight']]['attribute_decimal'];
+			$category_ao_array			= array($this->get_category_ao_array($item_id, $this->CI->Item->get_info($item_id)->category, 0));
 
-			$api_data[]					= array(
-				'AspectRatio' 			=> $attribute_values[$config_data['clcdesq_aspectratio']]['attribute_value'],
-				'AudienceRating' 		=> $attribute_values[$config_data['clcdesq_audiencerating']]['attribute_value'],
-				'AudioFormat' 			=> $attribute_values[$config_data['clcdesq_audioformat']]['attribute_value'],
-				'AudioTrackListing' 	=> $attribute_values[$config_data['clcdesq_audiotracklisting']]['attribute_value'],
-				'AuthorsText' 			=> $attribute_values[$config_data['clcdesq_authorstext']]['attribute_value'],
-				'Barcode' 				=> $product['item_number'],
-				'Binding' 				=> $attribute_values[$config_data['clcdesq_binding']]['attribute_value'],
-				'BookForeword' 			=> $attribute_values[$config_data['clcdesq_bookforeword']]['attribute_value'],
-				'BookIndex' 			=> $attribute_values[$config_data['clcdesq_bookindex']]['attribute_value'],
-				'BookSampleChapter' 	=> $attribute_values[$config_data['clcdesq_booksamplechapter']]['attribute_value'],
-				'Contributors' 			=> $this->get_contributor_ao_array($attribute_values[$config_data['clcdesq_authorstext']]['attribute_value']),
-				'Condition'				=> $this->get_condition_ao_array($attribute_values[$config_data['clcdesq_condition']]['attribute_value']),
-				'DateAdded'	 			=> $this->get_date_added($item_id),
-				'Depth'		 			=> (float)$attribute_values[$config_data['clcdesq_depth']]['attribute_decimal'],
-				'Description' 			=> $product['description'],
-				'DimensionUnit' 		=> $attribute_values[$config_data['clcdesq_depth']]['attribute_decimal'] !== NULL ? $this->CI->Attribute->get_info($config_data['clcdesq_depth'])->definition_unit : NULL,
-				'DiscountGroup' 		=> $this->get_product_discount_group_ao_array($item_id),
-				'EAN' 					=> $this->get_ean($this->get_isbn($product['item_number'])),
-				'Format' 				=> $attribute_values[$config_data['clcdesq_format']]['attribute_value'],
-				'Height'		 		=> (float)$attribute_values[$config_data['clcdesq_height']]['attribute_decimal'],
-				'Image'					=> $this->get_image_array($product['pic_filename']),
-				'InternalCode' 			=> (string)$item_id,
-				'ISBN'		 			=> $this->get_isbn($product['item_number']),
-				'KindId'		 		=> $product['category'] === 'Books' ? 1 : NULL,		/* Regular Book*///TODO: this should not be hardcoded.
-				'Language'	 			=> $this->get_language_ao_array($attribute_values[$config_data['clcdesq_language']]['attribute_value']),
-				'MediaType'	 			=> $this->get_media_type_ao_array($product['category']),
-				'NumberOfDiscs' 		=> $number_of_discs ? (int)$number_of_discs : NULL,
-				'NumberOfPages' 		=> $number_of_pages ? (int)$number_of_pages : NULL,
-				'OriginalTitle' 		=> $attribute_values[$config_data['clcdesq_originaltitle']]['attribute_value'],
-				'Price' 				=> (float)$product['unit_price'],
-				'PriceWithoutVAT'		=> (float)$this->get_price_without_VAT($product['unit_price']),
-				'PriceNote'				=> $attribute_values[$config_data['clcdesq_pricenote']]['attribute_value'],
-				'Producer'				=> $this->get_producer_user_ao_array($attribute_values[$config_data['clcdesq_producer']]['attribute_value']),
-				'ProductStatusProducer' => $this->get_product_status_producer_ao_array($product['deleted']),
-				'PriceCurrency'			=> $config_data['currency_code'] !== '' ? $config_data['currency_code'] : NULL,
-				'Published' 			=> ($product['deleted'] === '0'),
-				'PublisherRRP'			=> (float)$attribute_values[$config_data['clcdesq_publisherrrp']]['attribute_decimal'],
-				'ReducedPrice'			=> (float)$attribute_values[$config_data['clcdesq_reducedprice']]['attribute_decimal'],
-				'ReducedPriceStartDate'	=> $attribute_values[$config_data['clcdesq_reducedpricestartdate']]['attribute_date'],
-				'ReducedPriceEndDate'	=> $attribute_values[$config_data['clcdesq_reducedpriceenddate']]['attribute_date'],
-				'ReleaseDate' 			=> $this->get_release_date($attribute_values[$config_data['clcdesq_releasedate']]['attribute_date']),
-				'RunningTime'			=> $running_time ? (int)$running_time : NULL,
-				'Series'				=> $this->get_product_series_ao_array($attribute_values[$config_data['clcdesq_series']]['attribute_value'], $item_id),
-				'ShowOnWebsite'			=> $this->get_show_on_website($attribute_values[$config_data['clcdesq_showonwebsite']]['attribute_value']),
-				'StockCount'			=> empty($product['stock_count']) ? (int)$this->get_total_quantity($item_id, $stock_locations) : $product['stock_count'],
-				'StockOnOrder'			=> $stock_on_order ? (int)$stock_on_order : NULL,
-				'Supplier'				=> $this->get_supplier_user_ao_array($product['supplier_id']),
-				'Subtitle'				=> $attribute_values[$config_data['clcdesq_subtitle']]['attribute_value'],
-				'Subtitles'				=> $attribute_values[$config_data['clcdesq_subtitles']]['attribute_value'],
-				'TeaserDescription'		=> $attribute_values[$config_data['clcdesq_teaserdescription']]['attribute_value'],
-				'Title' 				=> $product['name'],
-				'UniqueId'				=> $this->get_uniqueid($item_id, $config_data['clcdesq_uniqueid']),
-				'UPC' 					=> $attribute_values[$config_data['clcdesq_upc']]['attribute_value'],
-				'VatPercent'			=> (float)$this->CI->Item_taxes->get_info($item_id)[0]['percent'],
-				'VideoTrailerEmbedCode'	=> $product['videotrailerembedcode'],
-				'Weight'				=> (float)$attribute_values[$config_data['clcdesq_weight']]['attribute_decimal'],
-				'WeightForShipping'		=> (float)$attribute_values[$config_data['clcdesq_weightforshipping']]['attribute_decimal'],
-				'WeightUnit'			=> $attribute_values[$config_data['clcdesq_weight']]['attribute_decimal'] !== NULL ? $this->CI->Attribute->get_info($config_data['clcdesq_weight'])->definition_unit : NULL,
-				'Width'					=> (float)$attribute_values[$config_data['clcdesq_width']]['attribute_decimal'],
-				'Categories' 			=> array($this->get_category_ao_array($item_id, $this->CI->Item->get_info($item_id)->category, 0)));
+			if($this->data_error_check($product, $config_data, $category_ao_array))
+			{
+
+				$api_data[]					= array(
+					'AspectRatio' 			=> $attribute_values[$config_data['clcdesq_aspectratio']]['attribute_value'],
+					'AudienceRating' 		=> $attribute_values[$config_data['clcdesq_audiencerating']]['attribute_value'],
+					'AudioFormat' 			=> $attribute_values[$config_data['clcdesq_audioformat']]['attribute_value'],
+					'AudioTrackListing' 	=> $attribute_values[$config_data['clcdesq_audiotracklisting']]['attribute_value'],
+					'AuthorsText' 			=> $attribute_values[$config_data['clcdesq_authorstext']]['attribute_value'],
+					'Barcode' 				=> $product['item_number'],
+					'Binding' 				=> $attribute_values[$config_data['clcdesq_binding']]['attribute_value'],
+					'BookForeword' 			=> $attribute_values[$config_data['clcdesq_bookforeword']]['attribute_value'],
+					'BookIndex' 			=> $attribute_values[$config_data['clcdesq_bookindex']]['attribute_value'],
+					'BookSampleChapter' 	=> $attribute_values[$config_data['clcdesq_booksamplechapter']]['attribute_value'],
+					'Contributors' 			=> $this->get_contributor_ao_array($attribute_values[$config_data['clcdesq_authorstext']]['attribute_value']),
+					'Condition'				=> $this->get_condition_ao_array($attribute_values[$config_data['clcdesq_condition']]['attribute_value']),
+					'DateAdded'	 			=> $this->get_date_added($item_id),
+					'Depth'		 			=> (float)$dimension_unit,
+					'Description' 			=> $product['description'],
+					'DimensionUnit' 		=> $dimension_unit !== NULL ? $this->CI->Attribute->get_info($config_data['clcdesq_depth'])->definition_unit : NULL,
+					'DiscountGroup' 		=> $this->get_product_discount_group_ao_array($item_id),
+					'EAN' 					=> $this->get_ean($this->get_isbn($product['item_number'])),
+					'Format' 				=> $attribute_values[$config_data['clcdesq_format']]['attribute_value'],
+					'Height'		 		=> (float)$attribute_values[$config_data['clcdesq_height']]['attribute_decimal'],
+					'Image'					=> $this->get_image_array($product['pic_filename']),
+					'InternalCode' 			=> (string)$item_id,
+					'ISBN'		 			=> $this->get_isbn($product['item_number']),
+					'KindId'		 		=> $product['category'] === 'Books' ? 1 : NULL,		/* Regular Book*///TODO: this should not be hardcoded.
+					'Language'	 			=> $this->get_language_ao_array($attribute_values[$config_data['clcdesq_language']]['attribute_value']),
+					'MediaType'	 			=> $this->get_media_type_ao_array($product['category']),
+					'NumberOfDiscs' 		=> $number_of_discs ? (int)$number_of_discs : NULL,
+					'NumberOfPages' 		=> $number_of_pages ? (int)$number_of_pages : NULL,
+					'OriginalTitle' 		=> $attribute_values[$config_data['clcdesq_originaltitle']]['attribute_value'],
+					'Price' 				=> (float)$product['unit_price'],
+					'PriceWithoutVAT'		=> (float)$this->get_price_without_VAT($product['unit_price']),
+					'PriceNote'				=> $attribute_values[$config_data['clcdesq_pricenote']]['attribute_value'],
+					'Producer'				=> $this->get_producer_user_ao_array($attribute_values[$config_data['clcdesq_producer']]['attribute_value']),
+					'ProductStatusProducer' => $this->get_product_status_producer_ao_array($product['deleted']),
+					'PriceCurrency'			=> $config_data['currency_code'] !== '' ? $config_data['currency_code'] : NULL,
+					'Published' 			=> ($product['deleted'] === '0'),
+					'PublisherRRP'			=> (float)$attribute_values[$config_data['clcdesq_publisherrrp']]['attribute_decimal'],
+					'ReducedPrice'			=> (float)$attribute_values[$config_data['clcdesq_reducedprice']]['attribute_decimal'],
+					'ReducedPriceStartDate'	=> $attribute_values[$config_data['clcdesq_reducedpricestartdate']]['attribute_date'],
+					'ReducedPriceEndDate'	=> $attribute_values[$config_data['clcdesq_reducedpriceenddate']]['attribute_date'],
+					'ReleaseDate' 			=> $this->get_release_date($attribute_values[$config_data['clcdesq_releasedate']]['attribute_date']),
+					'RunningTime'			=> $running_time ? (int)$running_time : NULL,
+					'Series'				=> $this->get_product_series_ao_array($attribute_values[$config_data['clcdesq_series']]['attribute_value'], $item_id),
+					'ShowOnWebsite'			=> $this->get_show_on_website($attribute_values[$config_data['clcdesq_showonwebsite']]['attribute_value']),
+					'StockCount'			=> empty($product['stock_count']) ? (int)$this->get_total_quantity($item_id, $stock_locations) : $product['stock_count'],
+					'StockOnOrder'			=> $stock_on_order ? (int)$stock_on_order : NULL,
+					'Supplier'				=> $this->get_supplier_user_ao_array($product['supplier_id']),
+					'Subtitle'				=> $attribute_values[$config_data['clcdesq_subtitle']]['attribute_value'],
+					'Subtitles'				=> $attribute_values[$config_data['clcdesq_subtitles']]['attribute_value'],
+					'TeaserDescription'		=> $attribute_values[$config_data['clcdesq_teaserdescription']]['attribute_value'],
+					'Title' 				=> $product['name'],
+					'UniqueId'				=> $unique_id ? $unique_id : $this->generate_and_save_uniqueid($item_id, $config_data['clcdesq_uniqueid']),
+					'UPC' 					=> $attribute_values[$config_data['clcdesq_upc']]['attribute_value'],
+					'VatPercent'			=> (float)$this->CI->Item_taxes->get_info($item_id)[0]['percent'],
+					'VideoTrailerEmbedCode'	=> $product['videotrailerembedcode'],
+					'Weight'				=> (float)$weight_unit,
+					'WeightForShipping'		=> (float)$attribute_values[$config_data['clcdesq_weightforshipping']]['attribute_decimal'],
+					'WeightUnit'			=> $weight_unit !== NULL ? $this->CI->Attribute->get_info($config_data['clcdesq_weight'])->definition_unit : NULL,
+					'Width'					=> (float)$attribute_values[$config_data['clcdesq_width']]['attribute_decimal'],
+					'Categories' 			=> $category_ao_array);
+			}
+			else
+			{
+				log_message('Error',"Item ID: $item_id skipped.  Minimum CLCdesq data requirements were not met.");
+			}
+
+			unset($data[$key]);
 		}
 
+		$data = NULL;
+
 		return $this->array_filter_recursive($api_data);
+	}
+
+	private function data_error_check($product, $config_data, $category_ao_array)
+	{
+		$results = TRUE;
+
+		if($product['category'] !== 'Books' || $config_data['currency_code'] === '' || empty($product['name']) || $product['price'] === '' || empty($category_ao_array))
+		{
+			$results = FALSE;
+		}
+
+		return $results;
 	}
 
 	/**
@@ -406,7 +444,7 @@ class Clcdesq_integration_lib
 	{
 		if(!empty($barcode))
 		{
-			$isbn_candidate = preg_replace("/[^0-9xX]/", "", $barcode);
+			$isbn_candidate = preg_replace('/[^0-9xX]/', '', $barcode);
 
 			if(strlen($isbn_candidate) !== 10 && strlen($isbn_candidate) !== 13)
 			{
@@ -604,7 +642,7 @@ class Clcdesq_integration_lib
 		{
 			$product_series_ao	= array(
 				'Id'			=> NULL,
-				'UID'			=> NULL,
+				'UID'			=> $this->generate_and_save_uniqueid(),
 				'Title'			=> $title,
 				'Description'	=> NULL,
 				'DateAdded'		=> $this->get_date_added($item_id),
@@ -616,26 +654,32 @@ class Clcdesq_integration_lib
 	}
 
 	/**
-	 * Retrieves or creates Microsoft GUID v4 if it doesn't exist.
+	 * Generates and Saves Microsoft GUID v4.
 	 *
 	 * @param	int		$item_id
 	 * @param	array	$config_data
 	 * @return	string	Microsoft GUID v4
 	 */
-	private function get_uniqueid($item_id, $unique_id_definition_id)
+	private function generate_and_save_uniqueid($item_id = NULL, $unique_id_definition_id = NULL)
 	{
-		$unique_id = $this->CI->Attribute->get_attribute_value($item_id, (int)$unique_id_definition_id)->attribute_value;
-		if(empty($unique_id))
+		if(!empty($item_id))
 		{
 			$data = openssl_random_pseudo_bytes(16);
 			$data[6] = chr(ord($data[6]) & 0x0f | 0x40);    // set version to 0100
 			$data[8] = chr(ord($data[8]) & 0x3f | 0x80);    // set bits 6-7 to 10
 			$unique_id = vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
 
-			$this->CI->Attribute->save_value($unique_id, $unique_id_definition_id, $item_id, FALSE, "TEXT");
-		}
+			if(!$this->CI->Attribute->save_value($unique_id, $unique_id_definition_id, $item_id, FALSE, 'TEXT'))
+			{
+				return NULL;
+			}
 
-		return $unique_id;
+			return $unique_id;
+		}
+		else
+		{
+			return '00000000-0000-0000-0000-000000000000';
+		}
 	}
 
 	/**

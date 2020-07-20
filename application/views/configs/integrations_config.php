@@ -629,7 +629,6 @@
 					'value'	=> $this->lang->line('common_submit'),
 					'class'	=> 'btn btn-primary btn-sm pull-right'));
 			?>
-
 		</fieldset>
 	</div>
 <?php echo form_close(); ?>
