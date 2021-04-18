@@ -1,6 +1,6 @@
 <?php if (!defined('BASEPATH')) exit('No direct script access allowed');
 
-class Migration_fix_attribute_datetime extends CI_Migration
+class Migration_AlternateCurrency extends CI_Migration
 {
 	public function __construct()
 	{
@@ -9,7 +9,7 @@ class Migration_fix_attribute_datetime extends CI_Migration
 
 	public function up()
 	{
-		execute_script(APPPATH . 'migrations/sqlscripts/3.3.0_fix_attribute_datetime.sql');
+		execute_script(APPPATH . 'migrations/sqlscripts/alternatecurrency.sql');
 	}
 
 	public function down()

@@ -157,9 +157,21 @@ if(isset($success))
 							?>
 								<td><?php echo $item['item_number']; ?></td>
 								<td style="align: center;">
-									<?php echo $item['name'] . ' '. implode(' ', array($item['attribute_values'], $item['attribute_dtvalues'])); ?>
+									<?php echo $item['name'] . ' ' . $item['attribute_values']; ?>
 									<br/>
-									<?php if ($item['stock_type'] == '0'): echo '[' . to_quantity_decimals($item['in_stock']) . ' in ' . $item['stock_name'] . ']'; endif; ?>
+									<?php if($apply_exchange_rate)
+									{
+									?>
+										<?php if ($item['stock_type'] == '0'): echo '[' . to_quantity_decimals($item['in_stock'] / $exchange_rate) . ' in ' . $item['stock_name'] . ']'; endif; ?>
+									<?php
+									}
+									else
+									{
+									?>
+										<?php if ($item['stock_type'] == '0'): echo '[' . to_quantity_decimals($item['in_stock']) . ' in ' . $item['stock_name'] . ']'; endif; ?>
+									<?php
+									}
+									?>
 								</td>
 							<?php
 							}
@@ -167,7 +179,7 @@ if(isset($success))
 
 							<td>
 								<?php
-								if($items_module_allowed && $change_price)
+							if($items_module_allowed)
 								{
 									echo form_input(array('name'=>'price', 'class'=>'form-control input-sm', 'value'=>to_currency_no_money($item['price']), 'tabindex'=>++$tabindex, 'onClick'=>'this.select();'));
 								}
@@ -187,8 +199,15 @@ if(isset($success))
 									echo form_hidden('quantity', $item['quantity']);
 								}
 								else
-								{
-									echo form_input(array('name'=>'quantity', 'class'=>'form-control input-sm', 'value'=>to_quantity_decimals($item['quantity']), 'tabindex'=>++$tabindex, 'onClick'=>'this.select();'));
+								{									
+									if($apply_exchange_rate)
+									{
+										echo form_input(array('name'=>'quantity', 'class'=>'form-control input-sm', 'value'=>to_quantity_decimals($item['quantity'] / $exchange_rate), 'tabindex'=>++$tabindex, 'onClick'=>'this.select();'));
+									}
+									else
+									{
+										echo form_input(array('name'=>'quantity', 'class'=>'form-control input-sm', 'value'=>to_quantity_decimals($item['quantity']), 'tabindex'=>++$tabindex, 'onClick'=>'this.select();'));
+									}
 								}
 								?>
 							</td>
@@ -403,6 +422,18 @@ if(isset($success))
 			}
 			?>
 		<?php echo form_close(); ?>
+		<!-- Currency Converter Script - EXCHANGERATEWIDGET.COM -->
+		<?php
+			if($apply_exchange_rate)
+			{
+		?>
+			<div  class="pull-center" style="width:100%;border:1px solid #55A516;"><div style="text-align:center;background-color:#4d88ff;width:100%;font-size:13px;font-weight:bold;height:18px;padding-top:2px;"><a href="https://www.exchangeratewidget.com/" style="color:#FFFFFF;text-decoration:none;" rel="nofollow">Currency Converter</a></div>
+			<script type="text/javascript" src="//www.exchangeratewidget.com/converter.php?l=en&f=USD&t=EUR&a=1&d=F0F0F0&n=FFFFFF&o=000000&v=1"></script>
+<!-- End of Currency Converter Script -->
+		<?php
+			}
+		?>
+
 
 		<table class="sales_table_100" id="sale_totals">
 			<tr>
@@ -419,7 +450,7 @@ if(isset($success))
 			{
 			?>
 				<tr>
-					<th style="width: 55%;"><?php echo (float)$tax['tax_rate'] . '% ' . $tax['tax_group']; ?></th>
+					<th style='width: 55%;'><?php echo (float)$tax['tax_rate'] . '% ' . $tax['name']; ?></th>
 					<th style="width: 45%; text-align: right;"><?php echo to_currency_tax($tax['sale_tax_amount']); ?></th>
 				</tr>
 			<?php
@@ -445,7 +476,16 @@ if(isset($success))
 				<tr>
 					<th style="width: 55%; font-size: 120%"><?php echo $this->lang->line('sales_amount_due'); ?></th>
 					<th style="width: 45%; font-size: 120%; text-align: right;"><span id="sale_amount_due"><?php echo to_currency($amount_due); ?></span></th>
-				</tr>
+				</tr>				
+			<?php
+			if($apply_exchange_rate)
+			{
+			?>
+				<th style="width: 55%;"><?php echo $this->lang->line('sales_due_local');?></th>
+				<th class="total-value"><?php echo $this->config->item('currency_symbol') .$amount_change; ?></th>
+			<?php
+			}
+			?>			
 			</table>
 
 			<div id="payment_details">
@@ -653,6 +693,32 @@ if(isset($success))
 			<?php
 			}
 			?>
+			<?php
+			if($alt_currency_enabled)
+			{
+			?>
+				<hr/>
+				<div class="container-fluid">
+					<div class="row">
+						<div class="form-group form-group-sm">
+							<div class="col-xs-6">
+								<label for="apply_exchange_rate" class="control-label checkbox">
+									<?php echo form_checkbox(array('name'=>'apply_exchange_rate', 'id'=>'apply_exchange_rate', 'value'=>1, 'checked'=>$apply_exchange_rate)); ?>
+									<?php echo $this->lang->line('sales_apply_exchange_rate');?>
+								</label>
+							</div>
+							<div class="col-xs-6">
+								<div class="input-group input-group-sm">
+									<span class="input-group-addon input-sm">×</span>
+									<?php echo form_input(array('name'=>'exchange_rate', 'id'=>'exchange_rate', 'class'=>'form-control input-sm', 'value'=>$exchange_rate));?>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			<?php
+			}
+			?>
 		<?php
 		}
 		?>
@@ -777,6 +843,11 @@ $(document).ready(function()
 		$.post("<?php echo site_url($controller_name.'/set_comment'); ?>", {comment: $('#comment').val()});
 	});
 
+	$('#exchange_rate').keyup(function()
+	{
+		$.post("<?php echo site_url($controller_name."/set_exchange_rate");?>", {exchange_rate: $('#exchange_rate').val()});
+	});
+
 	<?php
 	if($this->config->item('invoice_enable') == TRUE)
 	{
@@ -793,8 +864,11 @@ $(document).ready(function()
 		$.post("<?php echo site_url($controller_name.'/set_print_after_sale'); ?>", {sales_print_after_sale: $(this).is(':checked')});
 	});
 
-	$('#price_work_orders').change(function() {
-		$.post("<?php echo site_url($controller_name.'/set_price_work_orders'); ?>", {price_work_orders: $(this).is(':checked')});
+	$("#apply_exchange_rate").change(function()
+	{
+		$.post("<?php echo site_url($controller_name."/set_apply_exchange_rate");?>", {apply_exchange_rate: $(this).is(":checked")});
+	});
+
 	});
 
 	$('#email_receipt').change(function() {
@@ -923,6 +997,7 @@ function check_payment_type()
 		$(".giftcard-input").attr('disabled', true);
 		$(".non-giftcard-input").attr('disabled', false);
 	}
+	
 }
 </script>
 

@@ -9,7 +9,6 @@
 				<div class='row'>
 					<div class='col-xs-1'>
 						<?php echo form_input('number_locale', $this->config->item('number_locale'), array('class' => 'form-control input-sm', 'id' => 'number_locale')); ?>
-						<?php echo form_hidden('save_number_locale', $this->config->item('number_locale')); ?>
 					</div>
 					<div class="col-xs-2">
 						<label class="control-label">
@@ -31,7 +30,7 @@
 						'name' => 'thousands_separator',
 						'id' => 'thousands_separator',
 						'value' => 'thousands_separator',
-						'checked'=>$this->config->item('thousands_separator'))); ?>
+						'checked'=>($this->config->item('thousands_separator') == 'thousands_separator'))); ?>
 				</div>
 			</div>
 
@@ -53,10 +52,48 @@
 						'name' => 'currency_code',
 						'id' => 'currency_code',
 						'class' => 'form-control input-sm number_locale',
-						'value'=>$currency_code)); ?>
+						'value'=>$this->config->item('currency_code'))); ?>
 				</div>
 			</div>
-			
+
+			<div class="form-group form-group-sm">
+				<?php echo form_label($this->lang->line('config_use_alternate_currency'), 'use_alternate_currency', array('class' => 'control-label col-xs-2')); ?>
+				<div class='col-xs-2'>
+					<?php echo form_checkbox(array(
+						'name' => 'use_alternate_currency',
+						'id' => 'use_alternate_currency',
+						'value' => 'use_alternate_currency',
+						'checked'=>$this->config->item('use_alternate_currency'))); ?>
+				</div>
+			</div>
+
+			<div class="form-group form-group-sm">
+				<?php echo form_label($this->lang->line('config_number_locale_alt'), 'number_locale_alt', array('class' => 'control-label col-xs-2')); ?>
+				<div class='row'>
+					<div class='col-xs-1'>
+						<?php echo form_input('number_locale_alt', $this->config->item('number_locale_alt'), array('class' => 'form-control input-sm', 'id' => 'number_locale_alt')); ?>
+					</div>
+					<div class="col-xs-2">
+						<label class="control-label">
+							<span id="number_locale_example_alt">
+								&nbsp&nbsp<?php echo to_currency(1234567890.12300, $exchange_rate_set); ?>
+							</span>
+						</label>
+					</div>
+				</div>
+			</div>
+
+			<div class="form-group form-group-sm">
+				<?php echo form_label($this->lang->line('config_currency_symbol_alt'), 'currency_symbol_alt', array('class' => 'control-label col-xs-2')); ?>
+				<div class='col-xs-1'>
+					<?php echo form_input(array(
+						'name' => 'currency_symbol_alt',
+						'id' => 'currency_symbol_alt',
+						'class' => 'form-control input-sm number_locale',
+						'value'=>$this->config->item('currency_symbol_alt'))); ?>
+				</div>
+			</div>
+
 			<div class="form-group form-group-sm">
 				<?php echo form_label($this->lang->line('config_currency_decimals'), 'currency_decimals', array('class' => 'control-label col-xs-2')); ?>
 				<div class='col-xs-2'>
@@ -243,17 +280,56 @@ $(document).ready(function()
 
 	$('#currency_symbol, #thousands_separator, #currency_code').change(function() {
 		var data = { number_locale: $('#number_locale').val() };
-		data['save_number_locale'] = $("input[name='save_number_locale']").val();
 		data['currency_symbol'] = $('#currency_symbol').val();
 		data['currency_code'] = $('#currency_code').val();
 		data['thousands_separator'] = $('#thousands_separator').is(":checked")
 		$.post("<?php echo site_url($controller_name . '/ajax_check_number_locale')?>",
 			data,
 			function(response) {
-				$("input[name='save_number_locale']").val(response.save_number_locale);
 				$('#number_locale_example').text(response.number_locale_example);
 				$('#currency_symbol').val(response.currency_symbol);
-				$('#currency_code').val(response.currency_code);
+			},
+			'json'
+		);
+	});
+
+	$('#number_locale').change(function() {
+		var data = { number_locale: $('#number_locale').val() };
+		data['currency_symbol'] = '';
+		data['thousands_separator'] = $('#thousands_separator').is(":checked")
+		$.post("<?php echo site_url($controller_name . '/ajax_check_number_locale')?>",
+			data,
+			function(response) {
+				$('#number_locale_example').text(response.number_locale_example);
+				$('#currency_symbol').val(response.currency_symbol);
+			},
+			'json'
+		);
+	});
+
+	$('#currency_symbol_alt, #thousands_separator').change(function() {
+		var data = { number_locale_alt: $('#number_locale_alt').val() };
+		data['currency_symbol_alt'] = $('#currency_symbol_alt').val();
+		data['thousands_separator'] = $('#thousands_separator').is(":checked")
+		$.post("<?php echo site_url($controller_name . '/ajax_check_number_locale_alt')?>",
+			data,
+			function(response) {
+				$('#number_locale_example_alt').text(response.number_locale_example_alt);
+				$('#currency_symbol_alt').val(response.currency_symbol_alt);
+			},
+			'json'
+		);
+	});
+
+	$('#number_locale_alt').change(function() {
+		var data = { number_locale_alt: $('#number_locale_alt').val() };
+		data['currency_symbol_alt'] = '';
+		data['thousands_separator'] = $('#thousands_separator').is(":checked")
+		$.post("<?php echo site_url($controller_name . '/ajax_check_number_locale_alt')?>",
+			data,
+			function(response) {
+				$('#number_locale_example_alt').text(response.number_locale_example_alt);
+				$('#currency_symbol_alt').val(response.currency_symbol_alt);
 			},
 			'json'
 		);
@@ -270,24 +346,41 @@ $(document).ready(function()
 					url: "<?php echo site_url($controller_name . '/ajax_check_number_locale')?>",
 					type: 'POST',
 					data: {
-						'number_locale': function() { return $('#number_locale').val(); },
-						'save_number_locale': function() { return $("input[name='save_number_locale']").val(); },
-						'currency_symbol': function() { return $('#currency_symbol').val(); },
-						'thousands_separator': function() { return $('#thousands_separator').is(':checked'); },
-						'currency_code': function() { return $('#currency_code').val(); }
+						'number_locale': $('#number_locale').val(),
+						'currency_symbol': $('#currency_symbol').val(),
+						'currency_code': $('#currency_code').val(),
+						'thousands_separator': $('#thousands_separator').is(':checked')
 					},
 					dataFilter: function(data) {
 						var response = JSON.parse(data);
-						$("input[name='save_number_locale']").val(response.save_number_locale);
 						$('#number_locale_example').text(response.number_locale_example);
 						$('#currency_symbol').val(response.currency_symbol);
-						$('#currency_code').val(response.currency_code);
+						return response.success;
+					}
+				}
+			},
+			number_locale_alt:
+			{
+				required: true,
+				remote:
+				{
+					url: "<?php echo site_url($controller_name . '/ajax_check_number_locale_alt')?>",
+					type: 'POST',
+					data: {
+						'number_locale_alt': $('#number_locale_alt').val(),
+						'currency_symbol_alt': $('#currency_symbol_alt').val(),
+						'thousands_separator': $('#thousands_separator').is(':checked')
+					},
+					dataFilter: function(data) {
+						var response = JSON.parse(data);
+						$('#number_locale_example_alt').text(response.number_locale_example_alt);
+						$('#currency_symbol_alt').val(response.currency_symbol_alt);
+						$('#thousands_separator').prop('checked', response.thousands_separator);
 						return response.success;
 					}
 				}
 			}
 		},
-
 		messages:
 		{
 			number_locale: {

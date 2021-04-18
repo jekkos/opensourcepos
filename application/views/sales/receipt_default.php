@@ -75,7 +75,20 @@
 				<tr>
 					<td><?php echo ucfirst($item['name'] . ' ' . $item['attribute_values']); ?></td>
 					<td><?php echo to_currency($item['price']); ?></td>
-					<td><?php echo to_quantity_decimals($item['quantity']); ?></td>
+						<?php
+							if($apply_exchange_rate)
+							{
+						?>
+							<td><?php echo to_quantity_decimals($item['quantity'] / $exchange_rate); ?></td>
+						<?php
+							}
+							else
+							{
+							?>
+							<td><?php echo to_quantity_decimals($item['quantity']); ?></td>
+						<?php
+						}
+						?>					
 					<td class="total-value"><?php echo to_currency($item[($this->config->item('receipt_show_total_discount') ? 'total' : 'discounted_total')]); ?></td>
 					<?php
 					if($this->config->item('receipt_show_tax_ind'))
@@ -159,7 +172,7 @@
 			{
 			?>
 				<tr>
-					<td colspan="3" class="total-value"><?php echo (float)$tax['tax_rate'] . '% ' . $tax['tax_group']; ?>:</td>
+					<td colspan="3" class="total-value"><?php echo (float)$tax['tax_rate'] . '% ' . $tax['name']; ?>:</td>
 					<td class="total-value"><?php echo to_currency_tax($tax['sale_tax_amount']); ?></td>
 				</tr>
 			<?php
@@ -219,7 +232,7 @@
 			<td class="total-value"><?php echo to_currency($amount_change); ?></td>
 		</tr>
 	</table>
-
+	<?php if($apply_exchange_rate) echo $this->lang->line('sales_exchange_rate') . ': ' . (float)$exchange_rate; ?>
 	<div id="sale_return_policy">
 		<?php echo nl2br($this->config->item('return_policy')); ?>
 	</div>

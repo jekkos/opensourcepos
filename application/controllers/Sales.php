@@ -2,6 +2,8 @@
 
 require_once("Secure_Controller.php");
 
+//define('CASH_ADJUSTMENT_TRUE', 1);
+//define('CASH_ADJUSTMENT_FALSE', 0);
 class Sales extends Secure_Controller
 {
 	public function __construct()
@@ -227,6 +229,11 @@ class Sales extends Secure_Controller
 		$this->sale_lib->set_comment($this->input->post('comment'));
 	}
 
+	public function set_exchange_rate()
+	{
+		$this->sale_lib->set_exchange_rate($this->input->post('exchange_rate'));
+	}
+
 	public function set_invoice_number()
 	{
 		$this->sale_lib->set_invoice_number($this->input->post('sales_invoice_number'));
@@ -241,6 +248,11 @@ class Sales extends Secure_Controller
 	public function set_print_after_sale()
 	{
 		$this->sale_lib->set_print_after_sale($this->input->post('sales_print_after_sale'));
+	}
+
+	public function set_apply_exchange_rate()
+	{
+		$this->sale_lib->set_apply_exchange_rate($this->input->post('apply_exchange_rate'));
 	}
 
 	public function set_price_work_orders()
@@ -528,6 +540,18 @@ class Sales extends Secure_Controller
 
 		$data['cart'] = $this->sale_lib->get_cart();
 
+		$data['apply_exchange_rate'] = $this->sale_lib->is_apply_exchange_rate();
+		$data['exchange_rate'] = $this->sale_lib->get_exchange_rate();
+		$exchange_rate = $data['exchange_rate'];
+		$number_locale_alt = $this->sale_lib->get_number_locale_alt();
+		$currency_symbol_alt = $this->sale_lib->get_currency_symbol_alt();
+
+		$this->sale_lib->set_last_exchange_rate($exchange_rate);
+
+		$exchange_rate_set = array('apply_exchange_rate' => $data['apply_exchange_rate'], 'exchange_rate' => $data['exchange_rate'],
+			'number_locale_alt' => $number_locale_alt, 'currency_symbol_alt' => $currency_symbol_alt);
+		$this->session->set_flashdata('exchange_rate_set', $exchange_rate_set);
+
 		$data['include_hsn'] = ($this->config->item('include_hsn') == '1');
 		$__time = time();
 		$data['transaction_time'] = to_datetime($__time);
@@ -644,7 +668,8 @@ class Sales extends Secure_Controller
 				$invoice_view = $this->config->item('invoice_type');
 
 				// Save the data to the sales table
-				$data['sale_id_num'] = $this->Sale->save($sale_id, $data['sale_status'], $data['cart'], $customer_id, $employee_id, $data['comments'], $invoice_number, $work_order_number, $quote_number, $sale_type, $data['payments'], $data['dinner_table'], $tax_details);
+				$data['sale_id_num'] = $this->Sale->save($sale_id, $data['sale_status'], $data['cart'], $customer_id, $employee_id, $data['comments'],
+					$invoice_number, $work_order_number, $quote_number, $sale_type, $data['payments'], $data['dinner_table'], $tax_details, $data['exchange_rate']);
 				$data['sale_id'] = 'POS ' . $data['sale_id_num'];
 
 				// Resort and filter cart lines for printing
@@ -693,7 +718,8 @@ class Sales extends Secure_Controller
 				$data['sale_status'] = SUSPENDED;
 				$sale_type = SALE_TYPE_WORK_ORDER;
 
-				$data['sale_id_num'] = $this->Sale->save($sale_id, $data['sale_status'], $data['cart'], $customer_id, $employee_id, $data['comments'], $invoice_number, $work_order_number, $quote_number, $sale_type, $data['payments'], $data['dinner_table'], $tax_details);
+				$data['sale_id_num'] = $this->Sale->save($sale_id, $data['sale_status'], $data['cart'], $customer_id, $employee_id, $data['comments'], $invoice_number,
+					$work_order_number, $quote_number, $sale_type, $data['payments'], $data['dinner_table'], $tax_details, $data['exchange_rate']);
 				$this->sale_lib->set_suspended_id($data['sale_id_num']);
 
 				$data['cart'] = $this->sale_lib->sort_and_filter_cart($data['cart']);
@@ -730,7 +756,8 @@ class Sales extends Secure_Controller
 				$data['sale_status'] = SUSPENDED;
 				$sale_type = SALE_TYPE_QUOTE;
 
-				$data['sale_id_num'] = $this->Sale->save($sale_id, $data['sale_status'], $data['cart'], $customer_id, $employee_id, $data['comments'], $invoice_number, $work_order_number, $quote_number, $sale_type, $data['payments'], $data['dinner_table'], $tax_details);
+				$data['sale_id_num'] = $this->Sale->save($sale_id, $data['sale_status'], $data['cart'], $customer_id, $employee_id, $data['comments'], $invoice_number,
+					$work_order_number, $quote_number, $sale_type, $data['payments'], $data['dinner_table'], $tax_details, $data['exchange_rate']);
 				$this->sale_lib->set_suspended_id($data['sale_id_num']);
 
 				$data['cart'] = $this->sale_lib->sort_and_filter_cart($data['cart']);
@@ -757,7 +784,8 @@ class Sales extends Secure_Controller
 				$sale_type = SALE_TYPE_POS;
 			}
 
-			$data['sale_id_num'] = $this->Sale->save($sale_id, $data['sale_status'], $data['cart'], $customer_id, $employee_id, $data['comments'], $invoice_number, $work_order_number, $quote_number, $sale_type, $data['payments'], $data['dinner_table'], $tax_details);
+			$data['sale_id_num'] = $this->Sale->save($sale_id, $data['sale_status'], $data['cart'], $customer_id, $employee_id, $data['comments'], $invoice_number,
+				$work_order_number, $quote_number, $sale_type, $data['payments'], $data['dinner_table'], $tax_details, $exchange_rate);
 
 			$data['sale_id'] = 'POS ' . $data['sale_id_num'];
 
@@ -913,7 +941,7 @@ class Sales extends Secure_Controller
 		return $customer_info;
 	}
 
-	private function _load_sale_data($sale_id)
+	private function _load_sale_data($sale_id, $force_exchange_rate=FALSE)
 	{
 		$this->sale_lib->clear_all();
 		$cash_rounding = $this->sale_lib->reset_cash_rounding();
@@ -926,6 +954,18 @@ class Sales extends Secure_Controller
 		$data['payments'] = $this->sale_lib->get_payments();
 		$data['selected_payment_type'] = $this->sale_lib->get_payment_type();
 
+		$data['alt_currency_enabled'] = $this->config->item('use_alternate_currency') == '1';
+		if($force_exchange_rate)
+		{
+			$this->sale_lib->set_apply_exchange_rate(1);
+		}
+		$data['apply_exchange_rate'] = $this->sale_lib->is_apply_exchange_rate();
+		$data['exchange_rate'] = $this->sale_lib->get_exchange_rate();
+		$number_locale_alt = $this->sale_lib->get_number_locale_alt();
+		$currency_symbol_alt = $this->sale_lib->get_currency_symbol_alt();
+		$exchange_rate_set = array('apply_exchange_rate' => $data['apply_exchange_rate'], 'exchange_rate' => $data['exchange_rate'],
+			'number_locale_alt' => $number_locale_alt, 'currency_symbol_alt' => $currency_symbol_alt);
+		$this->session->set_flashdata('exchange_rate_set', $exchange_rate_set);
 		$tax_details = $this->tax_lib->get_taxes($data['cart'], $sale_id);
 		$data['taxes'] = $this->Sale->get_sales_taxes($sale_id);
 		$data['discount'] = $this->sale_lib->get_discount();
@@ -1036,6 +1076,15 @@ class Sales extends Secure_Controller
 
 		$data['cart'] = $this->sale_lib->get_cart();
 		$customer_info = $this->_load_customer_data($this->sale_lib->get_customer(), $data, TRUE);
+
+		$data['alt_currency_enabled'] = $this->config->item('use_alternate_currency') == '1';
+		$data['exchange_rate'] = $this->sale_lib->get_exchange_rate();
+		$data['apply_exchange_rate'] = $this->sale_lib->is_apply_exchange_rate();
+		$number_locale_alt = $this->sale_lib->get_number_locale_alt();
+		$currency_symbol_alt = $this->sale_lib->get_currency_symbol_alt();
+		$exchange_rate_set = array('apply_exchange_rate' => $data['apply_exchange_rate'], 'exchange_rate' => $data['exchange_rate'],
+			'number_locale_alt' => $number_locale_alt, 'currency_symbol_alt' => $currency_symbol_alt);
+		$this->session->set_flashdata('exchange_rate_set', $exchange_rate_set);
 
 		$data['modes'] = $this->sale_lib->get_register_mode_options();
 		$data['mode'] = $this->sale_lib->get_mode();
@@ -1153,10 +1202,25 @@ class Sales extends Secure_Controller
 		$this->sale_lib->clear_all();
 	}
 
+	public function receipt_alternate_currency($sale_id)
+	{
+		$use_alt_currency = TRUE;
+		$data = $this->_load_sale_data($sale_id, $use_alt_currency);
+		$this->load->view('sales/receipt', $data);
+		$this->sale_lib->clear_all();
+	}
+
 	public function invoice($sale_id)
 	{
 		$data = $this->_load_sale_data($sale_id);
+		$this->load->view('sales/'.$data['invoice_view'], $data);
+		$this->sale_lib->clear_all();
+	}
 
+	public function invoice_alternate_currency($sale_id)
+	{
+		$use_alt_currency = TRUE;
+		$data = $this->_load_sale_data($sale_id, $use_alt_currency);
 		$this->load->view('sales/'.$data['invoice_view'], $data);
 		$this->sale_lib->clear_all();
 	}
@@ -1164,6 +1228,9 @@ class Sales extends Secure_Controller
 	public function edit($sale_id)
 	{
 		$data = array();
+
+		$data['alt_currency_enabled'] = $this->config->item('use_alternate_currency') == '1';
+		$data['exchange_rate'] = (float)$this->Sale->get_exchange_rate($sale_id);
 
 		$sale_info = $this->xss_clean($this->Sale->get_info($sale_id)->row_array());
 		$data['selected_customer_id'] = $sale_info['customer_id'];
@@ -1279,6 +1346,7 @@ class Sales extends Secure_Controller
 			'customer_id' => $this->input->post('customer_id') != '' ? $this->input->post('customer_id') : NULL,
 			'employee_id' => $this->input->post('employee_id') != '' ? $this->input->post('employee_id') : NULL,
 			'comment' => $this->input->post('comment'),
+			'exchange_rate' => $this->input->post('exchange_rate'),
 			'invoice_number' => $this->input->post('invoice_number') != '' ? $this->input->post('invoice_number') : NULL
 		);
 
@@ -1424,16 +1492,16 @@ class Sales extends Secure_Controller
 		$work_order_number = $this->sale_lib->get_work_order_number();
 		$quote_number = $this->sale_lib->get_quote_number();
 		$sale_type = $this->sale_lib->get_sale_type();
+		$exchange_rate = $this->input->post('exchange_rate');
 		if($sale_type == '')
 		{
 			$sale_type = SALE_TYPE_POS;
 		}
 		$comment = $this->sale_lib->get_comment();
-		$sale_status = SUSPENDED;
-
+		$sale_status = SUSPENDED;		
 		$data = array();
 		$sales_taxes = array(array(), array());
-		if($this->Sale->save($sale_id, $sale_status, $cart, $customer_id, $employee_id, $comment, $invoice_number, $work_order_number, $quote_number, $sale_type, $payments, $dinner_table, $sales_taxes) == '-1')
+		if($this->Sale->save($sale_id, $sale_status, $cart, $customer_id, $employee_id, $comment, $invoice_number, $work_order_number, $quote_number, $sale_type, $payments, $dinner_table, $sales_taxes, $exchange_rate) == '-1')
 		{
 			$data['error'] = $this->lang->line('sales_unsuccessfully_suspended_sale');
 		}

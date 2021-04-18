@@ -231,6 +231,7 @@ $(document).ready(function()
 	</table>
 
 	<div id="terms">
+		<?php if($apply_exchange_rate) echo $this->lang->line('sales_exchange_rate') . ': ' . (float)$exchange_rate; ?>
 		<div id="sale_return_policy">
 			<h5>
 				<div><?php echo nl2br($this->config->item('payment_message')); ?></div>
