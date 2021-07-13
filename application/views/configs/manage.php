@@ -56,6 +56,9 @@
 	<div class="tab-pane" id="barcode_tab">
 		<?php $this->load->view("configs/barcode_config"); ?>
 	</div>
+    <div class="tab-pane" id="serial_tab">
+        <?php $this->load->view("configs/serial_config"); ?>
+    </div>
 	<div class="tab-pane" id="stock_tab">
 		<?php $this->load->view("configs/stock_config"); ?>
 	</div>

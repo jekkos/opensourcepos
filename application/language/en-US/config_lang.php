@@ -297,3 +297,7 @@ $lang["config_user_timezone"] = "Local Timezone:";
 $lang["config_website"] = "Website";
 $lang["config_work_order_enable"] = "Work Order Support";
 $lang["config_work_order_format"] = "Work Order Format";
+$lang["config_serial_configuration"] = "Serial I/O";
+$lang["config_serialport_server_url"] = "Serialport Url";
+$lang["config_serialport_picker"] = "Choose device";
+$lang["config_serialport_connect"] = "Connect";
